@@ -28,7 +28,7 @@ void do_NN_subtree(arma::Mat<size_t> *subtree_pts, arma::mat *subtree_dist,
 	AllKNN a(ref_subtree);
 	arma::Mat<size_t> resulting_neighbors;
 	arma::mat resulting_distances;
-	a.Search(query_data, 1, resulting_neighbors, resulting_distances);
+	a.Search(query_data, k, resulting_neighbors, resulting_distances);
 	*subtree_pts = arma::Mat<size_t>(resulting_neighbors);
 	*subtree_dist = arma::mat(resulting_distances);
 }
@@ -41,6 +41,8 @@ int main() {
 	reference_data.load("iris.csv");
 	arma::inplace_trans(query_data);
 	arma::inplace_trans(reference_data);
+	
+	size_t partitions = (size_t)((float)reference_data.n_cols/(float)num_threads);
 	/**
 	*
 	* This is where the submatrices
@@ -50,7 +52,7 @@ int main() {
 	std::vector<arma::mat> ref_mats;
 	arma::mat tmp;
 	for(auto j = 0; j < num_threads; j++) {
-		tmp = arma::mat(reference_data.submat(0, j*50, 3, (j+1)*50 - 1));
+		tmp = arma::mat(reference_data.submat(0, j*partitions, reference_data.n_rows - 1, (j+1)*partitions - 1));
 		ref_mats.push_back(tmp);
 		tmp.clear();
 	}
@@ -80,12 +82,14 @@ int main() {
 	* of the code.
 	*
 	**/
-	arma::Mat<size_t> global_neighbors;
-	arma::mat global_distances;
+	arma::Cube<size_t> global_neighbors((*subtree_neighbors[0]).n_rows,(*subtree_neighbors[0]).n_cols,num_threads);
+	arma::cube global_distances((*subtree_neighbors[0]).n_rows,(*subtree_neighbors[0]).n_cols,num_threads);
 	for(auto i = 0; i < num_threads; i++) {
-		std::cout << *subtree_neighbors[i] << std::endl;
-		std::cout << *subtree_distances[i] << std::endl;
+		global_neighbors.slice(i) =  *subtree_neighbors[i];
+		global_distances.slice(i) =  *subtree_distances[i];
+		
 	}
+	std::cout << global_neighbors << std::endl; 
 	for(auto i = 0; i < num_threads; i++) {
 		delete t[i];
 		delete subtree_neighbors[i];
