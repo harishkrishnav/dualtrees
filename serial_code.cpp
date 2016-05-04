@@ -22,7 +22,8 @@ int main() {
 	arma::Mat<size_t> resulting_neighbors;
 	arma::mat resulting_distances;
 	a.Search(query_data, 1, resulting_neighbors, resulting_distances);
-	/*for (size_t i = 0; i < resulting_neighbors.n_elem; ++i) {  
-		std::cout << "pt : " << i << " neigbors : " << resulting_neighbors[i] << " distance : "<< resulting_distances[i] << "\n";
-	}*/
+	std::cout << resulting_neighbors << std::endl;
+	//for (size_t i = 0; i < resulting_neighbors.n_elem; ++i) {  
+	//	std::cout << "pt : " << i << " neigbors : " << resulting_neighbors[i] << " distance : "<< resulting_distances[i] << "\n";
+	//}
 }
