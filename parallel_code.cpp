@@ -3,6 +3,9 @@
 #include <vector>
 #include <thread>
 
+#include <boost/timer/timer.hpp>
+#include <boost/chrono/include.hpp>
+
 #include <mlpack/core.hpp>
 #include <mlpack/methods/neighbor_search/neighbor_search.hpp>
 #include <armadillo>
@@ -23,25 +26,27 @@ std::vector<arma::mat *> subtree_distances;
 // which will run in parallel.
 void do_NN_subtree(arma::Mat<size_t> *subtree_pts, arma::mat *subtree_dist, 
 			const arma::mat& ref_subtree, size_t k,
-			const arma::mat& query_data) {
+			const arma::mat& query_data, int padding) {
 	
 	AllKNN a(ref_subtree);
 	arma::Mat<size_t> resulting_neighbors;
 	arma::mat resulting_distances;
 	a.Search(query_data, k, resulting_neighbors, resulting_distances);
-	*subtree_pts = arma::Mat<size_t>(resulting_neighbors);
+	*subtree_pts = arma::Mat<size_t>(resulting_neighbors) + padding;
 	*subtree_dist = arma::mat(resulting_distances);
 }
 
 int main() {
 	size_t k = 1;
-	size_t num_threads = 3;
+	size_t num_threads = 6;
 	arma::mat query_data, reference_data;
 	query_data.load("iris_test.csv");
 	reference_data.load("iris.csv");
 	arma::inplace_trans(query_data);
 	arma::inplace_trans(reference_data);
 	
+	boost::timer::cpu_timer timer;
+
 	size_t partitions = (size_t)((float)reference_data.n_cols/(float)num_threads);
 	/**
 	*
@@ -70,7 +75,7 @@ int main() {
 	// create worker threads
 	std::vector<std::thread *> t;
 	for(auto i = 0; i < num_threads; i++) {
-		t.push_back(new std::thread(do_NN_subtree, subtree_neighbors[i], subtree_distances[i], ref_mats[i], k, query_data));
+		t.push_back(new std::thread(do_NN_subtree, subtree_neighbors[i], subtree_distances[i], ref_mats[i], k, query_data, i*partitions));
 	}
 	// Wait for all threads to end
 	for(auto i = 0; i < num_threads; i++) {
@@ -89,6 +94,11 @@ int main() {
 		global_distances.slice(i) =  *subtree_distances[i];
 		
 	}
+
+	auto nanoseconds = boost::chrono::nanoseconds(timer.elapsed().user + timer.elapsed().system);
+	auto seconds = boost::chrono::duration_cast<boost::chrono::seconds>(nanoseconds);
+	std::cout << seconds.count() << std::endl;
+
 	std::cout << global_neighbors << std::endl; 
 	for(auto i = 0; i < num_threads; i++) {
 		delete t[i];

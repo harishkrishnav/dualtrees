@@ -4,6 +4,9 @@
 #include <mlpack/methods/neighbor_search/neighbor_search.hpp>
 #include <armadillo>
 
+#include <boost/timer/timer.hpp>
+#include <boost/chrono/include.hpp>
+
 using namespace mlpack::neighbor;
 typedef NeighborSearch<NearestNeighborSort, 
 		mlpack::metric::EuclideanDistance,
@@ -16,14 +19,18 @@ int main() {
 	reference_data.load("iris.csv");
 	arma::inplace_trans(query_data);
 	arma::inplace_trans(reference_data);
-	std::cout << reference_data.n_cols << " " <<  reference_data.n_rows<< std::endl;
-	std::cout << query_data.n_cols << " " << reference_data.n_rows << std::endl;
+	
+	boost::timer::cpu_timer timer;
+	
 	AllKNN a(reference_data);
 	arma::Mat<size_t> resulting_neighbors;
 	arma::mat resulting_distances;
 	a.Search(query_data, 1, resulting_neighbors, resulting_distances);
+	
+	auto nanoseconds = boost::chrono::nanoseconds(timer.elapsed().user + timer.elapsed().system);
+	auto seconds = boost::chrono::duration_cast<boost::chrono::seconds>(nanoseconds);
+	std::cout << seconds.count() << std::endl;
+	
 	std::cout << resulting_neighbors << std::endl;
-	//for (size_t i = 0; i < resulting_neighbors.n_elem; ++i) {  
-	//	std::cout << "pt : " << i << " neigbors : " << resulting_neighbors[i] << " distance : "<< resulting_distances[i] << "\n";
-	//}
+	return 0;
 }
